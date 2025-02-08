@@ -1,11 +1,13 @@
 ﻿using FpsAdventure.Scripts.Engine;
 using FpsAdventure.Scripts.Player;
+using FpsAdventure.Scripts.World;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace FpsAdventure
 {
@@ -32,6 +34,11 @@ namespace FpsAdventure
             GameObjectManager.Init();
             GameObjectManager.Create(new PlayerController());
 
+            foreach(var adp in GraphicsAdapter.Adapters)
+            {
+                Debug.WriteLine($"GPU: {adp.Description}\n");
+            }
+
             base.Initialize();
         }
 
@@ -51,10 +58,9 @@ namespace FpsAdventure
         {
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
+            CheckFullscreenAction();
 
             // TODO: Add your update logic here
-            Debug.WriteLine(Camera.MainCamera.CameraPosition);
-
             GameObjectManager.Update(gameTime);
 
             base.Update(gameTime);
@@ -77,45 +83,54 @@ namespace FpsAdventure
 
             model.Draw(matWorld, matView, matProj);
 
-            DrawGrid(matView, matProj);
+            Debugging.DrawGrid(this, matView, matProj);
+            Debugging.DrawTriangle(this, matView, matProj, Terrain.groundTriangles[0]);
+            Debugging.DrawTriangle(this, matView, matProj, Terrain.groundTriangles[1]);
 
             base.Draw(gameTime);
         }
 
-        //temp
-        public void DrawGrid(Matrix cameraView, Matrix cameraProjection)
+        bool isFullscreen = false;
+        public void ChangeFullscreen()
         {
-            int gridSize = 50;
-            float spacing = 1.0f;
-            BasicEffect effect = new BasicEffect(GraphicsDevice);
+            isFullscreen = !isFullscreen;
 
-            List<VertexPositionColor> vertices = new List<VertexPositionColor>();
-            Color gridColor = Color.Gray;
-
-            // Draw lines along the X-axis
-            for (int i = -gridSize; i <= gridSize; i++)
+            if(isFullscreen)
             {
-                vertices.Add(new VertexPositionColor(new Vector3(i * spacing, 0, -gridSize * spacing), gridColor));
-                vertices.Add(new VertexPositionColor(new Vector3(i * spacing, 0, gridSize * spacing), gridColor));
+                var displayMode = GraphicsDevice.Adapter.CurrentDisplayMode;
+
+                _graphics.PreferredBackBufferWidth = displayMode.Width;
+                _graphics.PreferredBackBufferHeight = displayMode.Height;
+
+                Window.IsBorderless = true;
+                _graphics.HardwareModeSwitch = false;
+
+                _graphics.ApplyChanges();
             }
-
-            // Draw lines along the Z-axis
-            for (int i = -gridSize; i <= gridSize; i++)
+            else
             {
-                vertices.Add(new VertexPositionColor(new Vector3(-gridSize * spacing, 0, i * spacing), gridColor));
-                vertices.Add(new VertexPositionColor(new Vector3(gridSize * spacing, 0, i * spacing), gridColor));
+                var displayMode = GraphicsDevice.Adapter.CurrentDisplayMode;
+
+                _graphics.PreferredBackBufferWidth = displayMode.Width / 2;
+                _graphics.PreferredBackBufferHeight = displayMode.Height / 2;
+
+                // Enable borderless fullscreen
+                Window.IsBorderless = false;
+                _graphics.HardwareModeSwitch = true;
+
+                // Apply changes
+                _graphics.ApplyChanges();
             }
+        }
 
-            // Set effect properties
-            effect.World = Matrix.Identity;
-            effect.View = cameraView;  // Replace with your camera's view matrix
-            effect.Projection = cameraProjection;  // Replace with your camera's projection matrix
-            effect.VertexColorEnabled = true;
-
-            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
+        bool fullscreenButtonPressed = false;
+        void CheckFullscreenAction()
+        {
+            if (Keyboard.GetState().IsKeyDown(Keys.F11)) fullscreenButtonPressed = true;
+            else if(fullscreenButtonPressed)
             {
-                pass.Apply();
-                GraphicsDevice.DrawUserPrimitives(PrimitiveType.LineList, vertices.ToArray(), 0, vertices.Count / 2);
+                fullscreenButtonPressed = false;
+                ChangeFullscreen();
             }
         }
 

@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework;
+﻿using FpsAdventure.Scripts.World;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
@@ -84,6 +85,82 @@ namespace FpsAdventure.Scripts.Engine
         {
             cameraStack.Remove(this);
         }
+    }
+
+    public static class Debugging
+    {
+        public static void DrawGrid(Game g, Matrix cameraView, Matrix cameraProjection)
+        {
+            int gridSize = 50;
+            float spacing = 1.0f;
+            BasicEffect effect = new BasicEffect(g.GraphicsDevice);
+
+            List<VertexPositionColor> vertices = new List<VertexPositionColor>();
+            Color gridColor = Color.Gray;
+
+            // Draw lines along the X-axis
+            for (int i = -gridSize; i <= gridSize; i++)
+            {
+                vertices.Add(new VertexPositionColor(new Vector3(i * spacing, 0, -gridSize * spacing), gridColor));
+                vertices.Add(new VertexPositionColor(new Vector3(i * spacing, 0, gridSize * spacing), gridColor));
+            }
+
+            // Draw lines along the Z-axis
+            for (int i = -gridSize; i <= gridSize; i++)
+            {
+                vertices.Add(new VertexPositionColor(new Vector3(-gridSize * spacing, 0, i * spacing), gridColor));
+                vertices.Add(new VertexPositionColor(new Vector3(gridSize * spacing, 0, i * spacing), gridColor));
+            }
+
+            // Set effect properties
+            effect.World = Matrix.Identity;
+            effect.View = cameraView;  // Replace with your camera's view matrix
+            effect.Projection = cameraProjection;  // Replace with your camera's projection matrix
+            effect.VertexColorEnabled = true;
+
+            foreach (EffectPass pass in effect.CurrentTechnique.Passes)
+            {
+                pass.Apply();
+                g.GraphicsDevice.DrawUserPrimitives(PrimitiveType.LineList, vertices.ToArray(), 0, vertices.Count / 2);
+            }
+        }
+
+        public static void DrawTriangle(Game g, Matrix cameraView, Matrix cameraProjection, Triangle triangle)
+        {
+
+            BasicEffect effect = new BasicEffect(g.GraphicsDevice);
+
+            effect.World = Matrix.Identity;
+            effect.View = cameraView;  // Replace with your camera's view matrix
+            effect.Projection = cameraProjection;  // Replace with your camera's projection matrix
+            effect.VertexColorEnabled = true;
+
+            // Create vertices with positions and colors
+            VertexPositionColor[] vertices = new VertexPositionColor[]
+            {
+                new VertexPositionColor(triangle.v0, Color.Lime),
+                new VertexPositionColor(triangle.v1, Color.Lime),
+                new VertexPositionColor(triangle.v2, Color.Lime),
+            };
+
+            // Define the triangle indices (0, 1, 2)
+            short[] indices = new short[] { 0, 1, 2 };
+
+            // Set up buffers
+            VertexBuffer vertexBuffer = new VertexBuffer(g.GraphicsDevice, typeof(VertexPositionColor), vertices.Length, BufferUsage.WriteOnly);
+            vertexBuffer.SetData(vertices);
+
+            IndexBuffer indexBuffer = new IndexBuffer(g.GraphicsDevice, IndexElementSize.SixteenBits, indices.Length, BufferUsage.WriteOnly);
+            indexBuffer.SetData(indices);
+
+            // Apply effect and draw
+            g.GraphicsDevice.SetVertexBuffer(vertexBuffer);
+            g.GraphicsDevice.Indices = indexBuffer;
+
+            effect.CurrentTechnique.Passes[0].Apply();
+            g.GraphicsDevice.DrawIndexedPrimitives(PrimitiveType.TriangleList, 0, 0, 1);
+        }
+
     }
 
 }
